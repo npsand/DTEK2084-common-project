@@ -115,4 +115,5 @@ def get_closest_gate(img):
     img = sep_closest_gate(img)
     cont = find_largest_contour_with_child(img)
     x,y,w,h = cv2.boundingRect(cont)
+    #x,y,w,h = 1, 2, 3, 4
     return x, y, w, h
