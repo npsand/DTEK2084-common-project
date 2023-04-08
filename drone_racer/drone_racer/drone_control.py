@@ -27,13 +27,12 @@ class DroneControl(Node):
         self.raw_image = None
 
 
-        timer_period = 0.5  # seconds
+        timer_period = 0.05  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 
     def image_callback(self, msg):
         self.raw_image = msg
-        print(msg)
 
     def timer_callback(self):
         if self.raw_image is None:
@@ -41,7 +40,10 @@ class DroneControl(Node):
         else:
             img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
             x, y, w, h = get_closest_gate(img)
-            self.get_logger().info('x: %d, y: %d, w: %d, h: %d' % (x, y, w, h))
+            #self.get_logger().info('x: %d, y: %d, w: %d, h: %d' % (x, y, w, h))
+            img = cv2.rectangle(img, (x, y),(x + w, y + h), color=(255, 0, 0), thickness=3)
+            cv2.imshow('Monitor', img)
+            cv2.waitKey(1)
 
 def main(args=None):
     rclpy.init(args=args)

@@ -79,6 +79,7 @@ def test_convexity(cont):
     return True
 
 # Input: (cv2) binary image
+# Output: (cv2) binary image, number of erosions
 # Erode the image until the closest gate is separated from other gates
 # and the pole is gone
 def sep_closest_gate(img):
@@ -104,16 +105,40 @@ def sep_closest_gate(img):
     for i in range(index):
         img = cv2.erode(img, kernel, iterations = 1)
        
-    return img
+    return img, index
 
+# Input: cv2 contour
+# Output: bounding rectangle
+def get_b_rect(cont, img_dims, erosions):
+    if len(cont) == 0:
+        return -1, -1, -1, -1
+    else:
+        x,y,w,h = cv2.boundingRect(cont)
+        x = x - (100 + erosions)
+        y = y - (100 + erosions)
+        w = w + erosions
+        h = h + erosions
+        if x < 0:
+            x = 0
 
+        if y < 0:
+            y = 0
+        
+        if x + w > img_dims[1]:
+            #w = w - (x + w - img_dims[0])
+            w = img_dims[1] - x
+
+        if y + h > img_dims[0]:
+            #w = w - (x + w - img_dims[0])
+            h = img_dims[0] - y
+
+        return x, y, w, h
     
 # Input: cv2 image
 # Output: bounding rectangle of closest gate
 def get_closest_gate(img):
+    img_dims = img.shape
     img = preprocess(img)
-    img = sep_closest_gate(img)
+    img, erosions = sep_closest_gate(img)
     cont = find_largest_contour_with_child(img)
-    x,y,w,h = cv2.boundingRect(cont)
-    #x,y,w,h = 1, 2, 3, 4
-    return x, y, w, h
+    return get_b_rect(cont, img_dims, erosions)
