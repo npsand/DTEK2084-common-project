@@ -19,7 +19,7 @@ class GateFinder(Node):
 
         self.raw_image = None
 
-        timer_period = 0.05  # seconds
+        timer_period = 0.03  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 

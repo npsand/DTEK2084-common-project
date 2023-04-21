@@ -5,9 +5,8 @@ import numpy as np
 # Output: binary image
 # Remove backgroud; leave only gates
 def preprocess(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    img = cv2.inRange(img, (0, 60, 20), (179, 255, 255))
+    img = cv2.inRange(img, (20, 60, 20), (150, 255, 255))
     img = sides(img)
 
     return img
@@ -114,10 +113,24 @@ def get_b_rect(cont, img_dims, erosions):
         return -1, -1, -1, -1
     else:
         x,y,w,h = cv2.boundingRect(cont)
+        # Account for erosion
         x = x - (100 + erosions)
         y = y - (100 + erosions)
         w = w + erosions
         h = h + erosions
+
+        if w == img_dims[1] or h == img_dims[0]:
+            w = 100
+            h = 100
+
+            M = cv2.moments(cont)
+            # calculate x,y coordinate of center
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            x = cX - 50
+            y = cY - 50
+
+        # Fix out-of-bounds rectangles
         if x < 0:
             x = 0
 

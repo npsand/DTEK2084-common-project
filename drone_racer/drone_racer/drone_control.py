@@ -1,11 +1,8 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from cv_bridge import CvBridge
-import cv2
 from tello_msgs.srv import TelloAction
-from .get_gate import get_closest_gate
+from racer_interfaces.msg import Rectangle
 
 
 class DroneControl(Node):
@@ -14,36 +11,34 @@ class DroneControl(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
-        self.subscription = self.create_subscription(Image, '/drone1/image_raw', self.image_callback, qos_profile=qos_policy)
-        self.publisher_ = self.create_publisher(Twist, '/drone1/cmd_vel', 10)
+        self.subscription = self.create_subscription(Rectangle, '/drone1/gate_rectangle', self.rect_callback, qos_profile=qos_policy)
+        self.vel_pub = self.create_publisher(Twist, '/drone1/cmd_vel', 10)
 
         self.tello_action_client = self.create_client(TelloAction, '/drone1/tello_action')
         while not self.tello_action_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('waiting for tello action service')
         self.req = TelloAction.Request()
 
-        self.bridge = CvBridge()
+        self.middle_x = int(960/2)
+        self.middle_y = int(720/2)
 
-        self.raw_image = None
+        self.last_rect = Rectangle()
+        self.last_rect.x = self.middle_x
+        self.last_rect.y = self.middle_y
+        self.last_rect.w = 0
+        self.last_rect.h = 0
+ 
+    def rect_callback(self, rect_msg):
+        self.adjust_horizontal(rect_msg)
 
-
-        timer_period = 0.05  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-
-
-    def image_callback(self, msg):
-        self.raw_image = msg
-
-    def timer_callback(self):
-        if self.raw_image is None:
-            self.get_logger().info('no image')   
-        else:
-            img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
-            x, y, w, h = get_closest_gate(img)
-            #self.get_logger().info('x: %d, y: %d, w: %d, h: %d' % (x, y, w, h))
-            img = cv2.rectangle(img, (x, y),(x + w, y + h), color=(255, 0, 0), thickness=3)
-            cv2.imshow('Monitor', img)
-            cv2.waitKey(1)
+    def adjust_horizontal(self, rect_msg):
+        vel_msg = Twist()
+        rect_mid_x = rect_msg.x + rect_msg.w/2
+        if self.middle_x - rect_mid_x < 20:
+            return
+        self.get_logger().info('mmmm %d' %(self.middle_x - rect_mid_x))
+        vel_msg.angular.z = (self.middle_x - rect_mid_x)/2000
+        self.vel_pub.publish(vel_msg)
 
 def main(args=None):
     rclpy.init(args=args)

@@ -9,7 +9,7 @@ from racer_interfaces.msg import Rectangle
 
 class Monitor(Node):
     def __init__(self):
-        super().__init__('drone_control')
+        super().__init__('monitor')
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
