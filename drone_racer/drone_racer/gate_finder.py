@@ -19,7 +19,7 @@ class GateFinder(Node):
 
         self.raw_image = None
 
-        timer_period = 0.03  # seconds
+        timer_period = 0.025  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 
@@ -32,6 +32,9 @@ class GateFinder(Node):
         else:
             img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
             x, y, w, h = get_closest_gate(img)
+            if x == -1:
+                return
+
             rect_msg = Rectangle()
             rect_msg.x = x
             rect_msg.y = y

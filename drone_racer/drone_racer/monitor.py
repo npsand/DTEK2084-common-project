@@ -36,7 +36,6 @@ class Monitor(Node):
             self.get_logger().info('no image')   
         else:
             img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
-            print(f'image shape: {img.shape}')
             if self.rect is not None:
                 x = self.rect.x
                 y = self.rect.y
