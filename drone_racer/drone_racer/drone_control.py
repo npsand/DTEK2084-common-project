@@ -34,10 +34,12 @@ class DroneControl(Node):
     def adjust_horizontal(self, rect_msg):
         vel_msg = Twist()
         rect_mid_x = rect_msg.x + rect_msg.w/2
-        if self.middle_x - rect_mid_x < 20:
+        if abs(self.middle_x - rect_mid_x) < 20:
             return
-        self.get_logger().info('mmmm %d' %(self.middle_x - rect_mid_x))
-        vel_msg.angular.z = (self.middle_x - rect_mid_x)/2000
+        #self.get_logger().info('mmmm %d' %(self.middle_x - rect_mid_x))
+        vel_msg.angular.z = (self.middle_x - rect_mid_x)/5000
+        vel_msg.linear.x = 0.05
+        self.get_logger().info('publish') 
         self.vel_pub.publish(vel_msg)
 
 def main(args=None):

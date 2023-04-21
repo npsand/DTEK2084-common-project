@@ -36,12 +36,13 @@ class Monitor(Node):
             self.get_logger().info('no image')   
         else:
             img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
-            if self.rect.x is not None:
+            print(f'image shape: {img.shape}')
+            if self.rect is not None:
                 x = self.rect.x
                 y = self.rect.y
                 w = self.rect.w
                 h = self.rect.h
-                self.get_logger().info('x: %d, y: %d, w: %d, h: %d' % (x, y, w, h))
+                #self.get_logger().info('x: %d, y: %d, w: %d, h: %d' % (x, y, w, h))
                 img = cv2.rectangle(img, (x, y),(x + w, y + h), color=(255, 0, 0), thickness=3)
             cv2.imshow('Monitor', img)
             cv2.waitKey(1)
