@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'drone_control = drone_racer.drone_control:main',
-            'gate_finder = drone_racer.gate_finder:main'
+            'gate_finder = drone_racer.gate_finder:main',
+            'monitor = drone_racer.monitor:main',
         ],
     },
 )
