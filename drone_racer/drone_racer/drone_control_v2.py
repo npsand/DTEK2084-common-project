@@ -31,11 +31,12 @@ class DroneControl(Node):
         self.horizontal_sign = 1
         self.sign_counter = 0
 
-        self.aspect_ratios = [0.3]
-        self.aspect_ratio = 0.3
+        self.aspect_ratios = [0.5]
+        self.aspect_ratio = 0.5
 
         self.go_through_counter = 0
         self.scan_counter = 0
+        self.choose_gate_counter = 0
         
         self.largest_rect = 0
 
@@ -50,14 +51,22 @@ class DroneControl(Node):
             if len(self.aspect_ratios) > 20:
                 del self.aspect_ratios[0]
 
+        # Stay in go through sequence
         if self.go_through_counter > 0:
             self.go_through_sequence()
             return
 
+        # Stay in scan sequence
         if self.scan_counter > 0:
             self.scan_sequence(rect_msg)
             return
         
+        # Stay in choose gate sequence
+        if self.choose_gate_counter > 0:
+            self.choose_gate_sequence(gate_size)
+            return
+        
+        # Set right direction for horizontal movement
         if self.sign_counter == 50:
             if self.get_slope() < 0:
                 self.horizontal_sign *= -1
@@ -72,16 +81,20 @@ class DroneControl(Node):
         if gate_size < 0.6 * self.camera_height:
             self.approach_gate()
         
+        # Adjust position until straight path through gate
         if self.aspect_ratio < 0.95:
             self.adjust_horizontal()
         elif gate_size > 0.8 * self.camera_height:
+            # Enter go through sequence
             self.go_through_counter += 1
-
+        
+        # Prevent turning too fast
         if abs(self.vel_msg.angular.z) > 0.2:
             self.vel_msg.angular.z = 0.2
 
         self.vel_pub.publish(self.vel_msg)
 
+    # Go through gate
     def go_through_sequence(self):
         if self.go_through_counter == 1:
             self.get_logger().info('init got through sequence')
@@ -94,12 +107,14 @@ class DroneControl(Node):
         elif self.go_through_counter > 60:
             self.get_logger().info('end go through through sequence')
             self.go_through_counter = 0
+            # Enter scan sequence
             self.scan_counter += 1
             return
         self.go_through_counter += 1
 
         self.vel_pub.publish(self.vel_msg)
 
+    # Scan for the next gate
     def scan_sequence(self, rect_msg):
         if self.scan_counter == 1:
             self.get_logger().info('init scan sequence')
@@ -114,6 +129,8 @@ class DroneControl(Node):
         elif self.scan_counter > 240:
             self.get_logger().info('end scan through sequence')
             self.scan_counter = 0
+            # Enter choose gate sequence
+            self.choose_gate_counter +=1
             return
         
         self.scan_counter += 1
@@ -124,15 +141,25 @@ class DroneControl(Node):
 
         self.vel_pub.publish(self.vel_msg)
 
+    def choose_gate_sequence(self, gate_size):
+        if self.choose_gate_counter == 1:
+            self.get_logger().info('init choose gate sequence')
+            self.vel_msg.angular.z = 0.1
+        if self.choose_gate_counter < 160:
+            if gate_size < self.largest_rect + 30 or gate_size > self.largest_rect - 30:
+                self.choose_gate_counter = 0
+
+        
     def approach_gate(self):
         self.vel_msg.linear.x = 0.05
         self.vel_msg.linear.y = 0.0
 
-
+    # Aim at gate center
     def adjust_aim(self, rect_msg):
         rect_mid_x = rect_msg.x + rect_msg.w/2
         if abs(self.middle_x - rect_mid_x) < 20:
             return
+        # Angular velocity proportional to how far gate middle is from middle of the screen
         self.vel_msg.angular.z = (self.middle_x - rect_mid_x)/1000
 
 
@@ -140,6 +167,7 @@ class DroneControl(Node):
         rect_mid_y = rect_msg.y + rect_msg.h/2
         if abs(self.middle_y - rect_mid_y) < 20:
             return
+        # Upwards velocity proportional to how far gate middle is from middle of the screen
         self.vel_msg.linear.z = (self.middle_y - rect_mid_y)/2000
 
     def adjust_horizontal(self):
