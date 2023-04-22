@@ -96,10 +96,11 @@ def sep_closest_gate(img):
         if len(cont) == 0:
             index = i
             break
+        """
         elif test_convexity(cont):
             index = i + 1
             break
-    
+        """
     # Erode the actual image one less time to keep the gate whole
     for i in range(index):
         img = cv2.erode(img, kernel, iterations = 1)
@@ -120,15 +121,15 @@ def get_b_rect(cont, img_dims, erosions):
         h = h + erosions
 
         if w >= img_dims[1] or h >= img_dims[0]:
-            w = 100
-            h = 100
+            w = 2
+            h = 2
 
             M = cv2.moments(cont)
             # calculate x,y coordinate of center
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            x = cX - 50
-            y = cY - 50
+            x = cX
+            y = cY
 
         # Fix out-of-bounds rectangles
         if x < 0:

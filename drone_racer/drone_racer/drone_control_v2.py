@@ -28,12 +28,15 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.aspect_ratios = [0.8]
-        self.aim_offset_sign = -1
+        self.horizontal_sign = 1
+        self.sign_counter = 0
+
+        self.aspect_ratios = [0.3]
+        self.aspect_ratio = 0.3
 
         self.go_through_counter = 0
         self.scan_counter = 0
-        self.choose_gate_counter = 0
+        
         self.largest_rect = 0
 
         self.vel_msg = Twist()
@@ -41,7 +44,11 @@ class DroneControl(Node):
  
     def rect_callback(self, rect_msg):
         gate_size = np.maximum(rect_msg.w, rect_msg.h)
-        aspect_ratio = rect_msg.w/rect_msg.h
+        if rect_msg.h > 0:
+            self.aspect_ratio = rect_msg.w/rect_msg.h
+            self.aspect_ratios.append(self.aspect_ratio)
+            if len(self.aspect_ratios) > 20:
+                del self.aspect_ratios[0]
 
         if self.go_through_counter > 0:
             self.go_through_sequence()
@@ -50,17 +57,28 @@ class DroneControl(Node):
         if self.scan_counter > 0:
             self.scan_sequence(rect_msg)
             return
+        
+        if self.sign_counter == 50:
+            if self.get_slope() < 0:
+                self.horizontal_sign *= -1
+            self.get_logger().info('set hor sign: %d' % self.horizontal_sign)
+            self.sign_counter = 0
+        else:
+            self.sign_counter += 1
 
-        if gate_size < 0.9 * self.camera_height:
-            self.approach_gate(rect_msg)
-        elif gate_size >= 0.9 * self.camera_height:
+        self.adjust_aim(rect_msg)
+        self.adjust_vertical(rect_msg)
+
+        if gate_size < 0.6 * self.camera_height:
+            self.approach_gate()
+        
+        if self.aspect_ratio < 0.95:
+            self.adjust_horizontal()
+        elif gate_size > 0.8 * self.camera_height:
             self.go_through_counter += 1
 
-        #elif aspect_ratio < 0.95:
-            #self.adjust_position_to_gate(rect_msg)
-
-        if self.vel_msg.angular.z > 0.6:
-            self.vel_msg.angular.z = 0.6
+        if abs(self.vel_msg.angular.z) > 0.2:
+            self.vel_msg.angular.z = 0.2
 
         self.vel_pub.publish(self.vel_msg)
 
@@ -96,7 +114,6 @@ class DroneControl(Node):
         elif self.scan_counter > 240:
             self.get_logger().info('end scan through sequence')
             self.scan_counter = 0
-            self.choose_gate_counter += 1
             return
         
         self.scan_counter += 1
@@ -107,17 +124,13 @@ class DroneControl(Node):
 
         self.vel_pub.publish(self.vel_msg)
 
-    def approach_gate(self, rect_msg):
+    def approach_gate(self):
         self.vel_msg.linear.x = 0.05
         self.vel_msg.linear.y = 0.0
-        self.adjust_aim(rect_msg)
-        self.adjust_vertical(rect_msg)
+
 
     def adjust_aim(self, rect_msg):
-        offset = (1 - self.aspect_ratios[-1]) * self.camera_width
-        if self.get_slope(rect_msg) < 0:
-            self.aim_offset_sign *= -1 
-        rect_mid_x = rect_msg.x + rect_msg.w/2 + offset * self.aim_offset_sign
+        rect_mid_x = rect_msg.x + rect_msg.w/2
         if abs(self.middle_x - rect_mid_x) < 20:
             return
         self.vel_msg.angular.z = (self.middle_x - rect_mid_x)/1000
@@ -129,32 +142,16 @@ class DroneControl(Node):
             return
         self.vel_msg.linear.z = (self.middle_y - rect_mid_y)/2000
 
-    def adjust_position_to_gate(self, rect_msg):
-        self.vel_msg.linear.x = 0.02
-        if self.vel_msg.linear.y == 0.0:
-            self.vel_msg.linear.y = 0.02
-
-        if self.get_slope(rect_msg) > 0:
-            self.vel_msg.linear.y = -self.vel_msg.linear.y
+    def adjust_horizontal(self):
+        self.vel_msg.linear.y = self.horizontal_sign * 0.05
 
 
-    def go_through_gate(self):
-        self.vel_msg.angular.z = 0.0
-        self.vel_msg.linear.y = 0.0
-        self.vel_msg.linear.z = 0.0
-        self.vel_msg.linear.x = 0.1
-        self.vel_pub.publish(self.vel_msg)
-
-    def get_slope(self, rect_msg):
-        aspect_ratio = rect_msg.w/rect_msg.h
-        self.aspect_ratios.append(aspect_ratio)
-        if len(self.aspect_ratios) > 10:
-            del self.aspect_ratios[0]
-            x = np.arange(0, len(self.aspect_ratios))
-            slope = np.polyfit(x, self.aspect_ratios, deg=1)[1]
-            return slope
-        else:
-            return 0
+    def get_slope(self):
+        #x = np.arange(0, len(self.aspect_ratios))
+        #slope = np.polyfit(x, self.aspect_ratios, deg=1)[1]
+        slope = self.aspect_ratios[-1] - self.aspect_ratios[0]
+        self.get_logger().info('slope: %g' % slope)
+        return slope
 
 
 
