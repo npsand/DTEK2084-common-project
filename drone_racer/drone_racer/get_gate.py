@@ -155,3 +155,22 @@ def get_closest_gate(img):
     img, erosions = sep_closest_gate(img)
     cont = find_largest_contour_with_child(img)
     return get_b_rect(cont, img_dims, erosions)
+
+
+
+def stop_sign_preprocess(img):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    img = cv2.inRange(img, (155, 50, 45), (180, 255, 255))
+    return img
+
+# Input: cv2 image
+# Output: bounding rectangle of the stop sign if not found return -1 -1 -1 -1
+def get_stop_sign(img):
+    result = stop_sign_preprocess(img)
+    contours = find_largest_contour_with_child(result)
+    if len(contours) == 0:
+        return -1, -1, -1, -1
+    else:
+        x,y,w,h = cv2.boundingRect(contours)
+        return x, y, w, h
+    
