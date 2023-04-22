@@ -3,6 +3,7 @@ from rclpy.node import Node
 import numpy as np
 from geometry_msgs.msg import Twist
 from tello_msgs.srv import TelloAction
+from std_srvs.srv import Trigger
 from racer_interfaces.msg import Rectangle
 
 
@@ -18,9 +19,14 @@ class DroneControl(Node):
         self.tello_action_client = self.create_client(TelloAction, '/drone1/tello_action')
         while not self.tello_action_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('waiting for tello action service')
-        self.req = TelloAction.Request()
-        self.req.cmd = 'takeoff'
-        self.future = self.tello_action_client.call_async(self.req)
+        self.tello_req = TelloAction.Request()
+        self.tello_req.cmd = 'takeoff'
+        self.future = self.tello_action_client.call_async(self.tello_req)
+
+        self.init_stop_client = self.create_client(Trigger, '/drone1/init_stop')
+        while not self.init_stop_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('waiting for init stop service')
+        self.stop_req = Trigger.Request()
 
         self.camera_width = 480
         self.camera_height = 360
@@ -35,7 +41,7 @@ class DroneControl(Node):
         self.aspect_ratio = 0.5
 
         self.go_through_counter = 0
-        self.scan_counter = 0
+        self.scan_counter = 1
         self.choose_gate_counter = 0
         
         self.largest_gate = 0
@@ -48,7 +54,7 @@ class DroneControl(Node):
         if rect_msg.h > 0:
             self.aspect_ratio = rect_msg.w/rect_msg.h
             self.aspect_ratios.append(self.aspect_ratio)
-            if len(self.aspect_ratios) > 10:
+            if len(self.aspect_ratios) > 15:
                 self.aspect_ratios = self.aspect_ratios[1:]
 
         # Stay in go through sequence
@@ -67,7 +73,7 @@ class DroneControl(Node):
             return
         
         # Set right direction for horizontal movement
-        if self.sign_counter == 20:
+        if self.sign_counter == 30:
             if self.get_slope() < 0:
                 self.horizontal_sign *= -1
             self.get_logger().info('set hor sign: %d' % self.horizontal_sign)
@@ -124,15 +130,22 @@ class DroneControl(Node):
             self.vel_msg.linear.y = 0.0
             self.vel_msg.linear.z = 0.0
             self.vel_msg.angular.z = 0.15
-        elif self.scan_counter > 1 and self.scan_counter <= 60:
+        elif self.scan_counter > 1 and self.scan_counter <= 80:
             self.vel_msg.angular.z = 0.15
-        elif self.scan_counter > 60 and self.scan_counter <= 180:
+        elif self.scan_counter > 80 and self.scan_counter <= 240:
             self.vel_msg.angular.z = -0.15
-        elif self.scan_counter > 180:
+        elif self.scan_counter > 240:
             self.get_logger().info('end scan through sequence')
             self.scan_counter = 0
-            # Enter choose gate sequence
-            self.choose_gate_counter +=1
+            if self.largest_gate < 20:
+                # Enter stop sequence
+                self.future = self.init_stop_client.call_async(self.stop_req)
+                self.get_logger().info('init stop sequence')
+                # Enter scan sequence for stop sign
+                self.scan_counter = 1
+            else:
+                # Enter choose gate sequence
+                self.choose_gate_counter +=1
             return
         
         self.scan_counter += 1
@@ -150,10 +163,15 @@ class DroneControl(Node):
             self.vel_msg.angular.z = 0.15
             self.vel_pub.publish(self.vel_msg)
         elif self.choose_gate_counter < 120 and gate_size > 2:
-            if gate_size < self.largest_gate + 30 or gate_size > self.largest_gate - 30:
+            if gate_size < self.largest_gate + 30 and gate_size > self.largest_gate - 30:
                 self.choose_gate_counter = 0
+                self.largest_gate = 0
                 return
-        
+        elif self.choose_gate_counter >= 120:
+            self.choose_gate_counter = 0
+            self.largest_gate = 0
+            return
+
         self.choose_gate_counter += 1
         
 

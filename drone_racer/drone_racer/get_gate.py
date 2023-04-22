@@ -160,7 +160,7 @@ def get_closest_gate(img):
 
 
 def stop_sign_preprocess(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
     img = cv2.inRange(img, (155, 50, 45), (180, 255, 255))
     return img
 
@@ -174,4 +174,3 @@ def get_stop_sign(img):
     else:
         x,y,w,h = cv2.boundingRect(contours)
         return x, y, w, h
-    
