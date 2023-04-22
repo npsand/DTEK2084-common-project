@@ -38,7 +38,7 @@ class DroneControl(Node):
         self.scan_counter = 0
         self.choose_gate_counter = 0
         
-        self.largest_rect = 0
+        self.largest_gate = 0
 
         self.vel_msg = Twist()
         self.vel_msg.linear.x = 0.05
@@ -48,8 +48,8 @@ class DroneControl(Node):
         if rect_msg.h > 0:
             self.aspect_ratio = rect_msg.w/rect_msg.h
             self.aspect_ratios.append(self.aspect_ratio)
-            if len(self.aspect_ratios) > 20:
-                del self.aspect_ratios[0]
+            if len(self.aspect_ratios) > 10:
+                self.aspect_ratios = self.aspect_ratios[1:]
 
         # Stay in go through sequence
         if self.go_through_counter > 0:
@@ -67,7 +67,7 @@ class DroneControl(Node):
             return
         
         # Set right direction for horizontal movement
-        if self.sign_counter == 50:
+        if self.sign_counter == 20:
             if self.get_slope() < 0:
                 self.horizontal_sign *= -1
             self.get_logger().info('set hor sign: %d' % self.horizontal_sign)
@@ -78,15 +78,17 @@ class DroneControl(Node):
         self.adjust_aim(rect_msg)
         self.adjust_vertical(rect_msg)
 
-        if gate_size < 0.6 * self.camera_height:
-            self.approach_gate()
-        
-        # Adjust position until straight path through gate
-        if self.aspect_ratio < 0.95:
-            self.adjust_horizontal()
-        elif gate_size > 0.8 * self.camera_height:
+        if gate_size > 0.8 * self.camera_height and self.aspect_ratio > 0.75:
             # Enter go through sequence
             self.go_through_counter += 1
+
+        if gate_size < 0.6 * self.camera_height:
+            self.approach_gate()
+        # Adjust position until straight path through gate
+        if self.aspect_ratio < 0.9:
+            self.adjust_horizontal()
+        else:
+            self.approach_gate()
         
         # Prevent turning too fast
         if abs(self.vel_msg.angular.z) > 0.2:
@@ -101,7 +103,7 @@ class DroneControl(Node):
             self.vel_msg.angular.z = 0.0
             self.vel_msg.linear.y = 0.0
             self.vel_msg.linear.z = 0.0
-            self.vel_msg.linear.x = 0.1
+            self.vel_msg.linear.x = 0.05
         elif self.go_through_counter > 1 and self.go_through_counter <= 60:
             self.vel_msg.linear.x = 0.1
         elif self.go_through_counter > 60:
@@ -121,12 +123,12 @@ class DroneControl(Node):
             self.vel_msg.linear.x = 0.0
             self.vel_msg.linear.y = 0.0
             self.vel_msg.linear.z = 0.0
-            self.vel_msg.angular.z = 0.1
-        elif self.scan_counter > 1 and self.scan_counter <= 80:
-            self.vel_msg.angular.z = 0.1
-        elif self.scan_counter > 80 and self.scan_counter <= 240:
-            self.vel_msg.angular.z = -0.1
-        elif self.scan_counter > 240:
+            self.vel_msg.angular.z = 0.15
+        elif self.scan_counter > 1 and self.scan_counter <= 60:
+            self.vel_msg.angular.z = 0.15
+        elif self.scan_counter > 60 and self.scan_counter <= 180:
+            self.vel_msg.angular.z = -0.15
+        elif self.scan_counter > 180:
             self.get_logger().info('end scan through sequence')
             self.scan_counter = 0
             # Enter choose gate sequence
@@ -135,19 +137,25 @@ class DroneControl(Node):
         
         self.scan_counter += 1
 
+        # Save largest gate
         max = np.maximum(rect_msg.w, rect_msg.h)
-        if max > self.largest_rect:
-            self.largest_rect = max
+        if max > self.largest_gate:
+            self.largest_gate = max
 
         self.vel_pub.publish(self.vel_msg)
 
     def choose_gate_sequence(self, gate_size):
         if self.choose_gate_counter == 1:
             self.get_logger().info('init choose gate sequence')
-            self.vel_msg.angular.z = 0.1
-        if self.choose_gate_counter < 160:
-            if gate_size < self.largest_rect + 30 or gate_size > self.largest_rect - 30:
+            self.vel_msg.angular.z = 0.15
+            self.vel_pub.publish(self.vel_msg)
+        elif self.choose_gate_counter < 120 and gate_size > 2:
+            if gate_size < self.largest_gate + 30 or gate_size > self.largest_gate - 30:
                 self.choose_gate_counter = 0
+                return
+        
+        self.choose_gate_counter += 1
+        
 
         
     def approach_gate(self):
@@ -168,16 +176,16 @@ class DroneControl(Node):
         if abs(self.middle_y - rect_mid_y) < 20:
             return
         # Upwards velocity proportional to how far gate middle is from middle of the screen
-        self.vel_msg.linear.z = (self.middle_y - rect_mid_y)/2000
+        self.vel_msg.linear.z = (self.middle_y - rect_mid_y)/1000
 
     def adjust_horizontal(self):
-        self.vel_msg.linear.y = self.horizontal_sign * 0.05
+        self.vel_msg.linear.y = self.horizontal_sign * 0.25 * (1- self.aspect_ratio)
 
 
     def get_slope(self):
-        #x = np.arange(0, len(self.aspect_ratios))
-        #slope = np.polyfit(x, self.aspect_ratios, deg=1)[1]
-        slope = self.aspect_ratios[-1] - self.aspect_ratios[0]
+        x = np.arange(0, len(self.aspect_ratios))
+        slope = np.polyfit(x, self.aspect_ratios, deg=1)[0]
+        #slope = self.aspect_ratios[-1] - self.aspect_ratios[0]
         self.get_logger().info('slope: %g' % slope)
         return slope
 

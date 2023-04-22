@@ -6,7 +6,7 @@ import numpy as np
 # Remove backgroud; leave only gates
 def preprocess(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    img = cv2.inRange(img, (20, 60, 20), (150, 255, 255))
+    img = cv2.inRange(img, (20, 60, 70), (150, 255, 255))
     img = sides(img)
 
     return img
