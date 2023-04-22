@@ -119,7 +119,7 @@ def get_b_rect(cont, img_dims, erosions):
         w = w + erosions
         h = h + erosions
 
-        if w == img_dims[1] or h == img_dims[0]:
+        if w >= img_dims[1] or h >= img_dims[0]:
             w = 100
             h = 100
 

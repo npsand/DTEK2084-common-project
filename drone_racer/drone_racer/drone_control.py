@@ -22,8 +22,8 @@ class DroneControl(Node):
         self.req.cmd = 'takeoff'
         self.future = self.tello_action_client.call_async(self.req)
 
-        self.camera_width = 960
-        self.camera_height = 720
+        self.camera_width = 480
+        self.camera_height = 360
 
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
@@ -40,7 +40,7 @@ class DroneControl(Node):
         aspect_ratio = rect_msg.w/rect_msg.h
 
         # At gate?
-        if gate_size > 0.8 * self.camera_height and aspect_ratio > 0.9 and self.go_through_counter < 100:
+        if gate_size > 0.85 * self.camera_height and aspect_ratio > 0.9 and self.go_through_counter < 100:
             self.go_through_gate()
             self.go_through_counter += 1
             return
@@ -49,6 +49,7 @@ class DroneControl(Node):
 
         if gate_size < 0.4 * self.camera_height:
             self.approach_gate(rect_msg)
+
         elif aspect_ratio < 0.95:
             self.adjust_position_to_gate(rect_msg)
 
@@ -57,7 +58,7 @@ class DroneControl(Node):
     def get_slope(self, rect_msg):
         aspect_ratio = rect_msg.w/rect_msg.h
         self.aspect_ratios.append(aspect_ratio)
-        if len(self.aspect_ratios) > 10:
+        if len(self.aspect_ratios) > 3:
             del self.aspect_ratios[0]
             x = np.arange(0, len(self.aspect_ratios))
             slope = np.polyfit(x, self.aspect_ratios, deg=1)[1]
