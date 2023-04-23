@@ -36,9 +36,10 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 2
-        self.sequence_length = 15
+        self.base_speed = 1.5
+        self.sequence_length = int(30 * 1/(self.base_speed))
 
+        self.stop = False
         self.state = 'scan'
         self.sequence_counter = 1
 
@@ -47,6 +48,7 @@ class DroneControl(Node):
 
         self.aspect_ratios = [0.5]
         self.aspect_ratio = 0.5
+        self.gate_size = 1
         
         self.largest_gate = 0
 
@@ -55,18 +57,18 @@ class DroneControl(Node):
  
     def rect_callback(self, rect_msg):
 
-        gate_size = np.maximum(rect_msg.w, rect_msg.h)
+        self.gate_size = np.maximum(rect_msg.w, rect_msg.h)
 
         self.save_aspect_ratio(rect_msg)
 
-        if self.state == 'stop':
+        if self.state == 'stop_state':
             self.stop_sequence()
         elif self.state == 'find_stop':
             self.find_stop()
         elif self.state == 'scan':
             self.scan_sequence(rect_msg)
         elif self.state == 'choose_gate':
-            self.choose_gate_sequence(gate_size)
+            self.choose_gate_sequence()
         elif self.state == 'go_through':
             self.go_through_sequence()
         elif self.state == 'approach':
@@ -74,8 +76,10 @@ class DroneControl(Node):
         elif self.state == 'approach_slowly':
             self.approach_slowly(rect_msg)
         elif self.state == 'adjust_position_to_gate':
-            self.set_movement_zero()
-            self.adjust_horizontal()
+            self.adjust_horizontal(rect_msg)
+            self.adjust_vertical(rect_msg)
+            self.adjust_aim(rect_msg)
+            self.move_forward_very_slowly()
         elif self.state == 'move_backwards':
             self.move_backwards()
 
@@ -85,24 +89,28 @@ class DroneControl(Node):
             self.vel_pub.publish(self.vel_msg)
             return
 
-        self.choose_action(gate_size)
+        self.choose_action()
         self.check_strafe_dir()
 
         self.vel_pub.publish(self.vel_msg)
 
 
-    def choose_action(self, gate_size):
+    def choose_action(self):
         
-        if gate_size < 3:
+        if self.gate_size < 3:
             self.state = 'move_backwards'
-        elif gate_size < 0.5 * self.camera_height:
+        elif self.gate_size < 0.4 * self.camera_height:
             self.state = 'approach'
-        elif gate_size < 0.7 * self.camera_height and self.aspect_ratio >= 0.95:
+        elif self.gate_size < 0.6 * self.camera_height and self.aspect_ratio >= 0.95:
             self.state = 'approach_slowly'
-        elif gate_size < 0.85 * self.camera_height and self.aspect_ratio < 0.95:
+        elif self.gate_size < 0.85 * self.camera_height and self.aspect_ratio < 0.95:
             self.state = 'adjust_position_to_gate'
-        elif gate_size >= 0.85 * self.camera_height:
-            self.state = 'go_through'
+        elif self.gate_size >= 0.85 * self.camera_height:
+            if self.stop:
+                self.state = 'stop_state'
+                self.sequence_counter = 1
+            else:
+                self.state = 'go_through'
 
 
     # Go through gate
@@ -145,6 +153,7 @@ class DroneControl(Node):
                 self.future = self.init_stop_client.call_async(self.stop_req)
                 self.get_logger().info('Trigger finding stop sign')
                 self.state = 'find_stop'
+                self.stop = True
             else:
                 # Enter choose gate sequence
                 self.state = 'choose_gate'
@@ -152,13 +161,13 @@ class DroneControl(Node):
         self.sequence_counter += 1
 
 
-    def choose_gate_sequence(self, gate_size):
+    def choose_gate_sequence(self):
         if self.sequence_counter == 1:
             self.get_logger().info('Init choose gate sequence')
             self.aim_left()
-        elif self.sequence_counter <= 6 * self.sequence_length and gate_size > 2:
+        elif self.sequence_counter <= 6 * self.sequence_length and self.gate_size > 2:
             # Find the largest gate
-            if gate_size < self.largest_gate + 30 and gate_size > self.largest_gate - 30:
+            if self.gate_size < self.largest_gate + 30 and self.gate_size > self.largest_gate - 30:
                 self.get_logger().info('Largest gate found')
                 self.sequence_counter = 0
                 self.largest_gate = 0
@@ -174,59 +183,67 @@ class DroneControl(Node):
     def find_stop(self):
         if self.sequence_counter <= 3 * self.sequence_length:
             self.aim_left()
-        elif self.sequence_counter > 3* self.sequence_length:
+        elif self.sequence_counter > 3 * self.sequence_length:
             self.sequence_counter = 0
             self.state = 'scan'
 
         self.sequence_counter += 1 
 
     def stop_sequence(self):
-        i = 0
+        if self.sequence_counter < 5:
+            self.set_movement_zero()
+            self.move_backwards()
+        else:
+            self.tello_req.cmd = 'land'
+            self.future = self.tello_action_client.call_async(self.tello_req)
+            time.sleep(3)
+        self.sequence_counter += 1
+
 
     def approach(self, rect_msg):
         self.set_movement_zero()
         self.move_forward()
         self.adjust_aim(rect_msg)
         self.adjust_vertical(rect_msg)
-        self.adjust_horizontal()
+        self.adjust_horizontal(rect_msg)
 
     def approach_slowly(self, rect_msg):
         self.set_movement_zero()
         self.move_forward_slowly()
         self.adjust_aim(rect_msg)
         self.adjust_vertical(rect_msg)
-        self.adjust_horizontal()
+        self.adjust_horizontal(rect_msg)
 
 
     # Aim at gate center
     def adjust_aim(self, rect_msg):
         rect_mid_x = rect_msg.x + rect_msg.w/2
-        if abs(self.middle_x - rect_mid_x) < 20:
-            return
         # Angular velocity proportional to how far gate middle is from middle of the screen
-        self.vel_msg.angular.z = self.base_speed * (self.middle_x - rect_mid_x)/1000
+        self.vel_msg.angular.z = self.base_speed * (self.middle_x - rect_mid_x)/(self.camera_height * 2)
 
 
     def adjust_vertical(self, rect_msg):
         rect_mid_y = rect_msg.y + rect_msg.h/2
-        if abs(self.middle_y - rect_mid_y) < 20:
-            return
         # Upwards velocity proportional to how far gate middle is from middle of the screen
-        self.vel_msg.linear.z = self.base_speed * (self.middle_y - rect_mid_y)/1000
+        self.vel_msg.linear.z = self.base_speed * (self.middle_y - rect_mid_y)/(self.camera_height * 2)
 
-    def adjust_horizontal(self):
-        self.vel_msg.linear.y = self.base_speed * self.horizontal_sign * 0.25 * (1- self.aspect_ratio)
+    def adjust_horizontal(self, rect_msg):
+        self.vel_msg.linear.y = self.base_speed * self.horizontal_sign * 0.1 * (1.05 - self.aspect_ratio)
+
 
     
     def move_forward(self):
         self.vel_msg.linear.x = 0.1 * self.base_speed
 
     def move_forward_slowly(self):
-        self.vel_msg.linear.x = 0.04 * self.base_speed
+        self.vel_msg.linear.x = 0.05 * self.base_speed
+
+    def move_forward_very_slowly(self):
+        self.vel_msg.linear.x = 0.02 * self.base_speed
 
     def move_backwards(self):
         self.set_movement_zero()
-        self.vel_msg.linear.x = -0.1 * self.base_speed
+        self.vel_msg.linear.x = -0.05 * self.base_speed
 
     def aim_left(self):
         self.vel_msg.angular.z = 0.15 * self.base_speed
@@ -244,7 +261,7 @@ class DroneControl(Node):
         if rect_msg.h > 0:
             self.aspect_ratio = rect_msg.w/rect_msg.h
             self.aspect_ratios.append(self.aspect_ratio)
-            if len(self.aspect_ratios) > 15:
+            if len(self.aspect_ratios) > int(self.sequence_length / 3):
                 self.aspect_ratios = self.aspect_ratios[1:]
 
     # Returns the trend (slope) of gate aspect ratios 
@@ -257,7 +274,7 @@ class DroneControl(Node):
     
     # Set right direction for horizontal movement
     def check_strafe_dir(self):
-        if self.sign_counter == 30:
+        if self.sign_counter == self.sequence_length:
             if self.get_slope() < 0:
                 self.horizontal_sign *= -1
             self.sign_counter = 0
