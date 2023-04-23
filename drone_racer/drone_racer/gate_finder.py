@@ -22,11 +22,16 @@ class GateFinder(Node):
         timer_period = 0.025  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
+        self.declare_parameter('test_arg')
+
+
 
     def image_callback(self, msg):
         self.raw_image = msg
 
     def timer_callback(self):
+        my_param = self.get_parameter('test_arg').get_parameter_value().string_value
+        self.get_logger().info('test_arg: %s' % my_param)
         if self.raw_image is None:
             self.get_logger().info('no image')   
         else:

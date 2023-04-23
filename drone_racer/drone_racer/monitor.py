@@ -13,6 +13,7 @@ class Monitor(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
+        
         self.image_sub = self.create_subscription(Image, '/drone1/image_raw', self.image_callback, qos_profile=qos_policy)
         self.raw_image = None
 
