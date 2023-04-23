@@ -1,12 +1,16 @@
 import cv2
 import numpy as np
 
+
 # Input: cv2 image
 # Output: binary image
 # Remove backgroud; leave only gates
-def preprocess(img):
+def preprocess(img, get_stop_sign=False):        
     img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    img = cv2.inRange(img, (20, 60, 70), (150, 255, 255))
+    if get_stop_sign:
+        img = cv2.inRange(img, (155, 50, 45), (180, 255, 255))
+    else:
+        img = cv2.inRange(img, (20, 60, 70), (150, 255, 255))
     img = sides(img)
 
     return img
@@ -150,27 +154,12 @@ def get_b_rect(cont, img_dims, erosions):
     
 # Input: cv2 image
 # Output: bounding rectangle of closest gate
-def get_closest_gate(img):
+def get_closest_gate(img, get_stop_sign=False):
     img_dims = img.shape
-    img = preprocess(img)
+    if get_stop_sign:
+        img = preprocess(img, get_stop_sign=True)
+    else:
+        img = preprocess(img)
     img, erosions = sep_closest_gate(img)
     cont = find_largest_contour_with_child(img)
     return get_b_rect(cont, img_dims, erosions)
-
-
-
-def stop_sign_preprocess(img):
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    img = cv2.inRange(img, (155, 50, 45), (180, 255, 255))
-    return img
-
-# Input: cv2 image
-# Output: bounding rectangle of the stop sign if not found return -1 -1 -1 -1
-def get_stop_sign(img):
-    result = stop_sign_preprocess(img)
-    contours = find_largest_contour_with_child(result)
-    if len(contours) == 0:
-        return -1, -1, -1, -1
-    else:
-        x,y,w,h = cv2.boundingRect(contours)
-        return x, y, w, h
