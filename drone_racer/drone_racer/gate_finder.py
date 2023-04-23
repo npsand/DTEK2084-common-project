@@ -37,7 +37,6 @@ class GateFinder(Node):
 
             if self.get_stop:
                 x, y, w, h = get_stop_sign(img)
-                self.get_logger().info('%d' % x)
             else:
                 x, y, w, h = get_closest_gate(img)
 
