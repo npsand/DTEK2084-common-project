@@ -36,7 +36,7 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.5
+        self.base_speed = 1.6
         self.sequence_length = int(30 * 1/(self.base_speed))
 
         self.stop = False
@@ -83,8 +83,6 @@ class DroneControl(Node):
         elif self.state == 'move_backwards':
             self.move_backwards()
 
-        self.get_logger().info('%s' % self.state)
-
         if self.sequence_counter > 0:
             self.vel_pub.publish(self.vel_msg)
             return
@@ -119,15 +117,14 @@ class DroneControl(Node):
             self.get_logger().info('Init go through sequence')
             self.set_movement_zero()
             self.move_forward()
-        elif self.sequence_counter <= 3 * self.sequence_length:
+        elif self.sequence_counter <= 2 * self.sequence_length:
             self.move_forward()
-        elif self.sequence_counter > 3 * self.sequence_length:
+        elif self.sequence_counter > 2 * self.sequence_length:
             # Enter scan sequence
             self.sequence_counter = 0
             self.state = 'scan'
         
         self.sequence_counter += 1
-        self.get_logger().info('%d' % self.sequence_counter)
 
     # Scan for the next gate
     def scan_sequence(self, rect_msg):
@@ -154,6 +151,7 @@ class DroneControl(Node):
                 self.get_logger().info('Trigger finding stop sign')
                 self.state = 'find_stop'
                 self.stop = True
+                self.base_speed *= 0.7
             else:
                 # Enter choose gate sequence
                 self.state = 'choose_gate'
@@ -246,10 +244,10 @@ class DroneControl(Node):
         self.vel_msg.linear.x = -0.05 * self.base_speed
 
     def aim_left(self):
-        self.vel_msg.angular.z = 0.15 * self.base_speed
+        self.vel_msg.angular.z = 0.12 * self.base_speed
 
     def aim_right(self):
-        self.vel_msg.angular.z = -0.15 * self.base_speed
+        self.vel_msg.angular.z = -0.12 * self.base_speed
 
     def set_movement_zero(self):
         self.vel_msg.linear.x = 0.0
@@ -268,8 +266,6 @@ class DroneControl(Node):
     def get_slope(self):
         x = np.arange(0, len(self.aspect_ratios))
         slope = np.polyfit(x, self.aspect_ratios, deg=1)[0]
-        #slope = self.aspect_ratios[-1] - self.aspect_ratios[0]
-        self.get_logger().info('slope: %g' % slope)
         return slope
     
     # Set right direction for horizontal movement
