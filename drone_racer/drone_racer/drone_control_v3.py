@@ -190,7 +190,7 @@ class DroneControl(Node):
         self.sequence_counter += 1 
 
     def stop_sequence(self):
-        if self.sequence_counter < 5:
+        if self.sequence_counter < 10:
             self.set_movement_zero()
             self.move_backwards()
         else:
@@ -233,13 +233,13 @@ class DroneControl(Node):
 
     
     def move_forward(self):
-        self.vel_msg.linear.x = 0.1 * self.base_speed
+        self.vel_msg.linear.x = 0.12 * self.base_speed
 
     def move_forward_slowly(self):
-        self.vel_msg.linear.x = 0.05 * self.base_speed
+        self.vel_msg.linear.x = 0.06 * self.base_speed
 
     def move_forward_very_slowly(self):
-        self.vel_msg.linear.x = 0.02 * self.base_speed
+        self.vel_msg.linear.x = 0.03 * self.base_speed
 
     def move_backwards(self):
         self.set_movement_zero()
