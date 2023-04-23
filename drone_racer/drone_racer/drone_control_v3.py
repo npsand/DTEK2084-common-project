@@ -36,8 +36,8 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.5
-        self.sequence_length = 20
+        self.base_speed = 2
+        self.sequence_length = 15
 
         self.state = 'scan'
         self.sequence_counter = 1
@@ -219,14 +219,14 @@ class DroneControl(Node):
 
     
     def move_forward(self):
-        self.vel_msg.linear.x = 0.05 * self.base_speed
+        self.vel_msg.linear.x = 0.1 * self.base_speed
 
     def move_forward_slowly(self):
-        self.vel_msg.linear.x = 0.02 * self.base_speed
+        self.vel_msg.linear.x = 0.04 * self.base_speed
 
     def move_backwards(self):
         self.set_movement_zero()
-        self.vel_msg.linear.x = -0.05 * self.base_speed
+        self.vel_msg.linear.x = -0.1 * self.base_speed
 
     def aim_left(self):
         self.vel_msg.angular.z = 0.15 * self.base_speed
