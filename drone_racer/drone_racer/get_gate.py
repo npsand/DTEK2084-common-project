@@ -121,15 +121,18 @@ def get_b_rect(cont, img_dims, erosions):
         h = h + erosions
 
         if w >= img_dims[1] or h >= img_dims[0]:
+            x = 480
+            y = 360
             w = 2
             h = 2
-
+        """
             M = cv2.moments(cont)
             # calculate x,y coordinate of center
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             x = cX
             y = cY
+        """
 
         # Fix out-of-bounds rectangles
         if x < 0:
