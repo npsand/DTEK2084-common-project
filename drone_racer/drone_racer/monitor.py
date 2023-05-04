@@ -13,7 +13,7 @@ class Monitor(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
-        self.image_sub = self.create_subscription(Image, '/drone1/image_raw', self.image_callback, qos_profile=qos_policy)
+        self.image_sub = self.create_subscription(Image, '/camera', self.image_callback, qos_profile=qos_policy) #/camera
         self.raw_image = None
 
         self.rect_sub  = self.create_subscription(Rectangle, '/drone1/gate_rectangle', self.rect_callback, qos_profile=qos_policy)
@@ -36,6 +36,8 @@ class Monitor(Node):
             self.get_logger().info('no image')   
         else:
             img = self.bridge.imgmsg_to_cv2(self.raw_image, 'rgb8')
+            #img = cv2.resize(img, (480, 360))
+
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             if self.rect is not None:
                 x = self.rect.x

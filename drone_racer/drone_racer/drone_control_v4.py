@@ -15,14 +15,14 @@ class DroneControl(Node):
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
         self.subscription = self.create_subscription(Rectangle, '/drone1/gate_rectangle', self.rect_callback, qos_profile=qos_policy)
-        self.vel_pub = self.create_publisher(Twist, '/drone1/cmd_vel', 10) # /drone1/cmd_vel
+        self.vel_pub = self.create_publisher(Twist, '/control', 10) #/control
 
-        self.tello_action_client = self.create_client(TelloAction, '/drone1/tello_action')
-        while not self.tello_action_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('waiting for tello action service')
-        self.tello_req = TelloAction.Request()
-        self.tello_req.cmd = 'takeoff'
-        self.future = self.tello_action_client.call_async(self.tello_req)
+        # self.tello_action_client = self.create_client(TelloAction, '/drone1/tello_action')
+        # while not self.tello_action_client.wait_for_service(timeout_sec=1.0):
+        #    self.get_logger().info('waiting for tello action service')
+        # self.tello_req = TelloAction.Request()
+        # self.tello_req.cmd = 'takeoff'
+        # self.future = self.tello_action_client.call_async(self.tello_req)
         time.sleep(3)
 
         self.init_stop_client = self.create_client(Trigger, '/drone1/init_stop')
@@ -30,18 +30,18 @@ class DroneControl(Node):
             self.get_logger().info('waiting for init stop service')
         self.stop_req = Trigger.Request()
 
-        self.camera_width = 480
-        self.camera_height = 360
+        self.camera_width = 960
+        self.camera_height = 720
 
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.6
-        self.sequence_length = int(30 * 1/(self.base_speed))
+        self.base_speed = 120
+        self.sequence_length = 60 #int(10 * 1/(self.base_speed))
 
         self.stop = False
-        self.state = 'scan'
-        self.sequence_counter = 1
+        self.state = 'approach'
+        self.sequence_counter = 0
 
         self.horizontal_sign = 1
         self.sign_counter = 0
@@ -83,21 +83,30 @@ class DroneControl(Node):
         elif self.state == 'move_backwards':
             self.move_backwards()
 
-        if self.sequence_counter > 0:
+        self.get_logger().info('state: %s' % self.state)
+
+        if self.sequence_counter > 0:      
+            temp_y = self.vel_msg.linear.y
+            self.vel_msg.linear.y = self.vel_msg.linear.x
+            self.vel_msg.linear.x = -temp_y
+
             self.vel_pub.publish(self.vel_msg)
             return
 
         self.choose_action()
         self.check_strafe_dir()
 
+        temp_y = self.vel_msg.linear.y
+        self.vel_msg.linear.y = self.vel_msg.linear.x
+        self.vel_msg.linear.x = -temp_y
         self.vel_pub.publish(self.vel_msg)
 
 
     def choose_action(self):
         
-        if self.gate_size < 3:
-            self.state = 'move_backwards'
-        elif self.gate_size < 0.4 * self.camera_height:
+        #if self.gate_size < 3:
+        #    self.state = 'move_backwards'
+        if self.gate_size < 0.4 * self.camera_height:
             self.state = 'approach'
         elif self.gate_size < 0.6 * self.camera_height and self.aspect_ratio >= 0.95:
             self.state = 'approach_slowly'
@@ -223,7 +232,7 @@ class DroneControl(Node):
     def adjust_vertical(self, rect_msg):
         rect_mid_y = rect_msg.y + rect_msg.h/2
         # Upwards velocity proportional to how far gate middle is from middle of the screen
-        self.vel_msg.linear.z = self.base_speed * (self.middle_y - rect_mid_y)/(self.camera_height * 2)
+        self.vel_msg.linear.z = 2 * self.base_speed * (self.middle_y - rect_mid_y)/(self.camera_height * 2)
 
     def adjust_horizontal(self, rect_msg):
         self.vel_msg.linear.y = self.base_speed * self.horizontal_sign * 0.1 * (1.05 - self.aspect_ratio)
@@ -231,13 +240,13 @@ class DroneControl(Node):
 
     
     def move_forward(self):
-        self.vel_msg.linear.x = 0.12 * self.base_speed
+        self.vel_msg.linear.x = 0.24 * self.base_speed
 
     def move_forward_slowly(self):
-        self.vel_msg.linear.x = 0.06 * self.base_speed
+        self.vel_msg.linear.x = 0.12 * self.base_speed
 
     def move_forward_very_slowly(self):
-        self.vel_msg.linear.x = 0.03 * self.base_speed
+        self.vel_msg.linear.x = 0.06 * self.base_speed
 
     def move_backwards(self):
         self.set_movement_zero()
