@@ -36,7 +36,7 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.6
+        self.base_speed = 1
         self.sequence_length = int(30 * 1/(self.base_speed))
 
         self.stop = False
