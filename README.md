@@ -20,7 +20,7 @@
     sudo apt install libignition-rendering3 
     pip3 install transformations
 
-
+## Building
 #### Build this package
     mkdir -p ~/drone_racing_ros2_ws/src
     cd ~/drone_racing_ros2_ws/src
@@ -29,6 +29,7 @@
     source /opt/ros/galactic/setup.bash
     colcon build
     
+## Running    
 #### Run a teleop simulation
 
     cd ~/drone_racing_ros2_ws
