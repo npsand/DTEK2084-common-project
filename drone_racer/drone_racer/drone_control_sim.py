@@ -15,7 +15,7 @@ class DroneControl(Node):
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
         self.subscription = self.create_subscription(Rectangle, '/drone1/gate_rectangle', self.rect_callback, qos_profile=qos_policy)
-        self.vel_pub = self.create_publisher(Twist, '/drone1/cmd_vel', 10) # /drone1/cmd_vel
+        self.vel_pub = self.create_publisher(Twist, '/drone1/cmd_vel', 10)
 
         self.tello_action_client = self.create_client(TelloAction, '/drone1/tello_action')
         while not self.tello_action_client.wait_for_service(timeout_sec=1.0):

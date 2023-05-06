@@ -22,9 +22,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'drone_control = drone_racer.drone_control_v5:main',
-            'gate_finder = drone_racer.gate_finder:main',
-            'monitor = drone_racer.monitor:main',
+            'drone_control = drone_racer.drone_control_sim:main',
+            'gate_finder = drone_racer.gate_finder_sim:main',
+            'monitor = drone_racer.monitor_sim:main',
         ],
     },
 )

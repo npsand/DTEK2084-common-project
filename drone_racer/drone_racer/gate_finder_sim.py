@@ -4,7 +4,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from racer_interfaces.msg import Rectangle
 from std_srvs.srv import Trigger
-from .get_gate import get_closest_gate, get_stop_sign
+from .get_gate_sim import get_closest_gate, get_stop_sign
 import cv2
 
 
@@ -14,7 +14,7 @@ class GateFinder(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                           history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                           depth=1)
-        self.subscription = self.create_subscription(Image, '/camera', self.image_callback, qos_profile=qos_policy)#/camera
+        self.subscription = self.create_subscription(Image, '/drone1/image_raw', self.image_callback, qos_profile=qos_policy)#/camera
         self.publisher_ = self.create_publisher(Rectangle, '/drone1/gate_rectangle', 10)
         self.init_stop_srv = self.create_service(Trigger, '/drone1/init_stop', self.stop_callback)
 
