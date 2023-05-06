@@ -20,7 +20,7 @@
     sudo apt install libignition-rendering3 
     pip3 install transformations
 
-
+## Building
 #### Build this package
     mkdir -p ~/drone_racing_ros2_ws/src
     cd ~/drone_racing_ros2_ws/src
@@ -29,6 +29,7 @@
     source /opt/ros/galactic/setup.bash
     colcon build
     
+## Running    
 #### Run a teleop simulation
 
     cd ~/drone_racing_ros2_ws
@@ -45,6 +46,15 @@ If you run into the **No namespace found** error re-set `GAZEBO_MODEL_PATH`:
     export GAZEBO_MODEL_PATH=${PWD}/install/tello_gazebo/share/tello_gazebo/models
     source /usr/share/gazebo/setup.sh
     
+#### Run a drone_racer controller
+
+You must run simulation above before this!
+
+    cd ~/drone_racing_ros2_ws
+    source install/setup.bash
+    ros2 launch drone_racer drone_racer_simulation_launch.py
+    
+You can replace `drone_racer_simulation_launch.py` with `drone_racer_irl_launch.py` to run code with the real drone.
 
 #### Control the drone 
     ros2 service call /drone1/tello_action tello_msgs/TelloAction "{cmd: 'takeoff'}"
