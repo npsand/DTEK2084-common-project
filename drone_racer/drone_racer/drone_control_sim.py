@@ -36,7 +36,7 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.6
+        self.base_speed = 1.2
         self.sequence_length = int(30 * 1/(self.base_speed))
 
         self.stop = False
@@ -95,7 +95,7 @@ class DroneControl(Node):
 
     def choose_action(self):
         
-        if self.gate_size < 3:
+        if self.gate_size < 0.1 * self.camera_height:
             self.state = 'move_backwards'
         elif self.gate_size < 0.4 * self.camera_height:
             self.state = 'approach'
@@ -226,7 +226,7 @@ class DroneControl(Node):
         self.vel_msg.linear.z = self.base_speed * (self.middle_y - rect_mid_y)/(self.camera_height * 2)
 
     def adjust_horizontal(self, rect_msg):
-        self.vel_msg.linear.y = self.base_speed * self.horizontal_sign * 0.1 * (1.05 - self.aspect_ratio)
+        self.vel_msg.linear.y = self.base_speed * self.horizontal_sign * 0.15 * (1.05 - self.aspect_ratio)
 
 
     
