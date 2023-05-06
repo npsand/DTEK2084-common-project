@@ -36,7 +36,7 @@ class DroneControl(Node):
         self.middle_x = int(self.camera_width/2)
         self.middle_y = int(self.camera_height/2)
 
-        self.base_speed = 1.2
+        self.base_speed = 1
         self.sequence_length = int(30 * 1/(self.base_speed))
 
         self.stop = False
@@ -101,9 +101,9 @@ class DroneControl(Node):
             self.state = 'approach'
         elif self.gate_size < 0.6 * self.camera_height and self.aspect_ratio >= 0.95:
             self.state = 'approach_slowly'
-        elif self.gate_size < 0.85 * self.camera_height and self.aspect_ratio < 0.95:
+        elif self.gate_size < 0.9 * self.camera_height and self.aspect_ratio < 0.95:
             self.state = 'adjust_position_to_gate'
-        elif self.gate_size >= 0.85 * self.camera_height:
+        elif self.gate_size >= 0.9 * self.camera_height:
             if self.stop:
                 self.state = 'stop_state'
                 self.sequence_counter = 1
