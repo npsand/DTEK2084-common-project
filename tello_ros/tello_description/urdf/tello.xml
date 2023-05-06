@@ -130,8 +130,8 @@
             <camera name="head">  <!-- TODO does this name do anything? -->
                 <horizontal_fov>1.4</horizontal_fov>
                 <image>
-                    <width>480</width>
-                    <height>360</height>
+                    <width>960</width>
+                    <height>720</height>
                     <format>R8G8B8</format>
                 </image>
                 <clip>
